@@ -43,8 +43,9 @@ class Speech(object):
     def is_call_to_action(self, recognizer, audio):
         speech = self.google_speech_recognition(recognizer, audio)
 
-        if speech is not None and self.launch_phrase in speech.lower():
-            return True
+        if speech is not None:
+            if self.launch_phrase in speech.lower():
+                return True
 
         return False
 

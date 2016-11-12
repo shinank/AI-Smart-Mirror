@@ -1,7 +1,7 @@
 # bot.py
 
 # speechrecognition, pyaudio, brew install portaudio
-import sys
+import sys, os
 sys.path.append("./")
 
 import requests
@@ -14,11 +14,11 @@ from speech import Speech
 from knowledge import Knowledge
 from vision import Vision
 
-my_name = "Aaron"
+my_name = "Stranger"
 launch_phrase = "ok mirror"
 use_launch_phrase = True
-weather_api_token = "<weather_token>"
-wit_ai_token = "<wit.ai_token>"
+weather_api_token = os.environ['WEATHER_API_TOKEN']
+wit_ai_token = os.environ['WIT_AI_TOKEN']
 debugger_enabled = True
 camera = 0
 
@@ -37,8 +37,13 @@ class Bot(object):
         """
         while True:
             requests.get("http://localhost:8080/clear")
-            if self.vision.recognize_face():
-                print "Found face"
+            if self.vision.recognize_person():
+                print "Found face - %s" % self.vision.person
+                last_person = self.vision.person 
+                if last_person != self.nlg.user_name:
+                    print "Person changed - Greet new person"
+                    self.nlg.user_name = self.vision.person
+                    self.speech.synthesize_text("Hello, %s" % self.nlg.user_name)
                 if use_launch_phrase:
                     recognizer, audio = self.speech.listen_for_audio()
                     if self.speech.is_call_to_action(recognizer, audio):
@@ -46,6 +51,8 @@ class Bot(object):
                         self.decide_action()
                 else:
                     self.decide_action()
+            else:
+                self.nlg.user_name = "Stranger"
 
     def decide_action(self):
         """
@@ -57,7 +64,10 @@ class Bot(object):
         # received audio data, now we'll recognize it using Google Speech Recognition
         speech = self.speech.google_speech_recognition(recognizer, audio)
 
-        if speech is not None:
+        if speech is not None and speech.lower() in "Thanks you":
+            self.speech.synthesize_text(self.nlg.appreciation())
+            return
+        else:
             try:
                 r = requests.get('https://api.wit.ai/message?v=20160918&q=%s' % speech,
                                  headers={"Authorization": wit_ai_token})
